@@ -1,122 +1,36 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import Viewport from './render/Viewport.jsx';
+import MapPicker from './ui/MapPicker.jsx';
+import { useSceneStore } from './store/scene-store.js';
+console.log('store import:', useSceneStore);
+import { fetchBuildings } from './osm/overpass.js';
+import { parseBuildings } from './osm/parse-osm.js';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const origin = useSceneStore((s) => s.origin);   // read from the store
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div style={{ height: '100%', display: 'flex', background: '#0f172a', color: 'white' }}>
+      <aside style={{ width: 320, padding: 16, borderRight: '1px solid #1e293b' }}>
+        <h1 style={{ fontSize: 18, margin: 0 }}>Cartogen</h1>
+        <p style={{ fontSize: 12, opacity: 0.6 }}>Map builder</p>
 
-      <div className="ticks"></div>
+        <MapPicker />
+        <button onClick={async () => {
+          const origin = useSceneStore.getState().origin;
+          const elements = await fetchBuildings(origin);
+          const nodes = parseBuildings(elements, origin);
+          useSceneStore.getState().setNodes(nodes);
+          console.log(`loaded ${nodes.length} buildings`);
+        }}>Load buildings</button>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <p style={{ fontSize: 12, fontFamily: 'monospace', opacity: 0.7 }}>
+          origin: {origin.lat.toFixed(4)}, {origin.lng.toFixed(4)}
+        </p>
+      </aside>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <main style={{ flex: 1 }}>
+        <Viewport />
+      </main>
+    </div>
+  );
 }
-
-export default App
