@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { extrudeFootprint } from '../lib/geometry.js';
 
-export default function Building({node}){
+export default function Building({node, preset}){
     const geometry = useMemo(
         () => extrudeFootprint(node.footprint, node.height),
         [node.footprint, node.height]
@@ -9,7 +9,7 @@ export default function Building({node}){
 
     return (
         <mesh geometry={geometry} castShadow receiveShadow>
-            <meshStandardMaterial color="#bcb6ab" roughness={0.85} />
+            <meshStandardMaterial color={preset.building} roughness={0.85} />
         </mesh>
     )
 }

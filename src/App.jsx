@@ -2,11 +2,11 @@ import Viewport from './render/Viewport.jsx';
 import MapPicker from './ui/MapPicker.jsx';
 import { useSceneStore } from './store/scene-store.js';
 console.log('store import:', useSceneStore);
-import { fetchBuildings } from './osm/overpass.js';
-import { parseBuildings } from './osm/parse-osm.js';
-
+import { fetchArea } from './osm/overpass.js';
+import { parseArea } from './osm/parse-osm.js';
 export default function App() {
   const origin = useSceneStore((s) => s.origin);   // read from the store
+  
 
   return (
     <div style={{ height: '100%', display: 'flex', background: '#0f172a', color: 'white' }}>
@@ -17,11 +17,12 @@ export default function App() {
         <MapPicker />
         <button onClick={async () => {
           const origin = useSceneStore.getState().origin;
-          const elements = await fetchBuildings(origin);
-          const nodes = parseBuildings(elements, origin);
+          const elements = await fetchArea(origin);
+          const nodes = parseArea(elements, origin);
+          useSceneStore.getState().setNodes(nodes);
           useSceneStore.getState().setNodes(nodes);
           console.log(`loaded ${nodes.length} buildings`);
-        }}>Load buildings</button>
+        }}>Load Area</button>
 
         <p style={{ fontSize: 12, fontFamily: 'monospace', opacity: 0.7 }}>
           origin: {origin.lat.toFixed(4)}, {origin.lng.toFixed(4)}
