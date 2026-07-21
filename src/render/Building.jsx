@@ -25,6 +25,7 @@ export default function Building({ node, selected, onSelect }) {
       onClick={(e) => { e.stopPropagation(); onSelect?.(node.id); }}
     >
       <meshStandardMaterial
+        polygonOffset
         color={selected ? theme.building.selected : style.color}
         roughness={0.9}
       />

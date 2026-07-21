@@ -32,9 +32,9 @@ export default function Viewport() {
         shadow-camera-bottom={-600}
         shadow-camera-far={1500}
       />
-      <mesh rotation-x={-Math.PI / 2} receiveShadow>
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.5, 0]} receiveShadow>
         <planeGeometry args={[6000, 6000]} />
-        <meshStandardMaterial color={theme.ground} roughness={1} />
+        <meshStandardMaterial polygonOffset color={theme.ground} roughness={1} />
       </mesh>
       <SceneNodes />
 

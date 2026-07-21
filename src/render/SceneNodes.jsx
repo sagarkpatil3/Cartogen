@@ -11,7 +11,7 @@ export default function SceneNodes() {
   const surfaces = nodes.filter((n) => n.type === 'surface');
   const paths = nodes.filter((n) => n.type === 'path');
   const buildings = nodes.filter((n) => n.type === 'building');
- 
+  console.log('SCENENODES: rendering', paths.length, 'paths'); 
   return (
     <>
       {surfaces.map((n) => <Surface key={n.id} node={n} />)}
