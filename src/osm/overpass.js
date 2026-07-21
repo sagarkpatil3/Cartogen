@@ -18,26 +18,25 @@ export async function fetchBuildings(origin, radiusDeg = 0.004) {
   return data.elements || [];
 }
 
-export async function fetchArea(origin, radiusDeg = 0.004) {
+export async function fetchArea(origin, radiusDeg = 0.008) {   // ← wider (was 0.004)
   const s = origin.lat - radiusDeg * 0.75;
   const n = origin.lat + radiusDeg * 0.75;
   const w = origin.lng - radiusDeg;
   const e = origin.lng + radiusDeg;
+  const bbox = `${s},${w},${n},${e}`;
 
-  const query = `[out:json][timeout:25];
+  const query = `[out:json][timeout:30];
     (
-      way["building"](${s},${w},${n},${e});
-      way["highway"](${s},${w},${n},${e});
-      way["leisure"~"park|garden|pitch"](${s},${w},${n},${e});
-      way["landuse"~"grass|forest|meadow"](${s},${w},${n},${e});
-      way["natural"="water"](${s},${w},${n},${e});
+      way["building"](${bbox});
+      way["highway"](${bbox});
+      way["amenity"="parking"](${bbox});
+      way["leisure"~"park|garden|pitch"](${bbox});
+      way["landuse"~"grass|forest|meadow|recreation_ground"](${bbox});
+      way["natural"~"water|wood"](${bbox});
     );
     out geom;`;
 
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    body: query,
-  });
+  const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query });
   if (!res.ok) throw new Error(`Overpass error ${res.status}`);
   const data = await res.json();
   return data.elements || [];

@@ -4,6 +4,7 @@ import { useSceneStore } from './store/scene-store.js';
 console.log('store import:', useSceneStore);
 import { fetchArea } from './osm/overpass.js';
 import { parseArea } from './osm/parse-osm.js';
+
 export default function App() {
   const origin = useSceneStore((s) => s.origin);   // read from the store
   

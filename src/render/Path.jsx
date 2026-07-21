@@ -1,12 +1,30 @@
+// @ts-check
 import { useMemo } from 'react';
 import { ribbon } from '../lib/geometry.js';
+import { pathStyle } from './theme.js';
 
-export default function Path({ node, preset }) {
-  const geometry = useMemo(() => ribbon(node.polyline, node.width), [node.polyline, node.width]);
-  const color = node.material === 'road' ? '#b9b3a8' : '#d9cdb6';
+export default function Path({ node }) {
+  const style = pathStyle(node.pathClass);
+
+  const casing = useMemo(
+    () => ribbon(node.polyline, style.width + style.border),
+    [node.polyline, style.width, style.border]
+  );
+  const fill = useMemo(
+    () => ribbon(node.polyline, style.width),
+    [node.polyline, style.width]
+  );
+
   return (
-    <mesh geometry={geometry} position={[0, 0.05, 0]} receiveShadow>
-      <meshStandardMaterial color={color} roughness={1} />
-    </mesh>
+    <group>
+      {/* border underneath */}
+      <mesh geometry={casing} position={[0, style.y, 0]} receiveShadow>
+        <meshStandardMaterial color={style.casing} roughness={1} />
+      </mesh>
+      {/* colored fill just above the casing */}
+      <mesh geometry={fill} position={[0, style.y + 0.015, 0]} receiveShadow>
+        <meshStandardMaterial color={style.color} roughness={1} />
+      </mesh>
+    </group>
   );
 }
