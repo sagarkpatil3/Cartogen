@@ -6,45 +6,25 @@ import { fetchArea } from './osm/overpass.js';
 import { parseArea } from './osm/parse-osm.js';
 import { scatterTrees } from './ops/scatter-trees.js';
 import { centroid } from './lib/geometry.js';
+import Sidebar from './ui/Sidebar.jsx';
 
 export default function App() {
   const origin = useSceneStore((s) => s.origin);   // read from the store
   
 
   return (
-    <div style={{ height: '100%', display: 'flex', background: '#0f172a', color: 'white' }}>
-      <aside style={{ width: 320, padding: 16, borderRight: '1px solid #1e293b' }}>
-        <h1 style={{ fontSize: 18, margin: 0 }}>Cartogen</h1>
-        <p style={{ fontSize: 12, opacity: 0.6 }}>Map builder</p>
-
-        <MapPicker />
-        <button onClick={async () => {
-          const origin = useSceneStore.getState().origin;
-          const elements = await fetchArea(origin);
-          const nodes = parseArea(elements, origin);
-          useSceneStore.getState().setNodes(nodes);
-          useSceneStore.getState().setNodes(nodes);
-          console.log(`loaded ${nodes.length} buildings`);
-        }}>Load Area</button>
-
-        <button onClick={() => {
-          const state = useSceneStore.getState();
-          const sel = state.nodes.find(n => n.id === state.selectedId);
-          let center = [0, 0];
-          if (sel?.footprint) center = centroid(sel._local || sel.footprint);
-          else if (sel?.position) center = sel.position;
-
-          const trees = scatterTrees({ count: 30, center, radius: 70, nodes: state.nodes, onlyOnGrass: false });
-          state.setNodes([...state.nodes, ...trees]);
-        }}>Scatter Trees</button>
-        <p style={{ fontSize: 12, fontFamily: 'monospace', opacity: 0.7 }}>
-          origin: {origin.lat.toFixed(4)}, {origin.lng.toFixed(4)}
-        </p>
-      </aside>
-
-      <main style={{ flex: 1 }}>
-        <Viewport />
-      </main>
-    </div>
+      <div className="flex h-full">
+        <Sidebar
+          onOpenMap={() => setMapOpen(true)}
+          onLoadArea={async () => {
+            const origin = useSceneStore.getState().origin;
+            const elements = await fetchArea(origin);
+            const parsed = parseArea(elements, origin);
+            useSceneStore.getState().setNodes(parsed);
+            useSceneStore.getState().addLog(`Loaded ${parsed.length} nodes`);
+          }}
+        />
+        <main className="flex-1"><Viewport /></main>
+      </div>
   );
 }
