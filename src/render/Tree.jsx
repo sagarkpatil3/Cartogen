@@ -17,6 +17,7 @@ export default function Tree({ node, selected, onSelect }) {
     <group
       position={[x, 0, z]}
       scale={s}
+      rotation={[0, node.rotation ?? 0, 0]}   // ← [xTilt, ySpin, zTilt] — only y
       onClick={(e) => { e.stopPropagation(); onSelect?.(node.id); }}
     >
       {/* trunk: a thin cylinder, its base at y=0 */}

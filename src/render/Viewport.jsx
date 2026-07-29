@@ -4,7 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import SceneNodes from './SceneNodes.jsx';
 import { theme } from './theme.js';
-
+import Transformer from './Transformer.jsx';
 
 export default function Viewport() {
   return (
@@ -37,8 +37,9 @@ export default function Viewport() {
         <meshStandardMaterial polygonOffset color={theme.ground} roughness={1} />
       </mesh>
       <SceneNodes />
+      <Transformer />
 
-      <OrbitControls target={[0, 0, 0]} maxPolarAngle={Math.PI / 2.15} />
+      <OrbitControls target={[0, 0, 0]} maxPolarAngle={Math.PI / 2.15} makeDefault />
     </Canvas>
   );
 }
