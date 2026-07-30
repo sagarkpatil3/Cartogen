@@ -83,16 +83,209 @@ export default function Inspector() {
       </Field>
 
       {node.type === 'building' && (
-        <Field label="Height (m)">
-          <input
-            type="number"
-            min="1"
-            className={INPUT}
-            value={node.height ?? 10}
-            onChange={(e) => patch({ height: Math.max(1, Number(e.target.value) || 1) })}
-          />
-        </Field>
+        <>
+          <Field label="Kind">
+            <select
+              className={INPUT}
+              value={node.kind || 'default'}
+              onChange={(e) => patch({ kind: e.target.value })}
+            >
+              <option value="default">Default</option>
+              <option value="civic">Civic / Institutional</option>
+              <option value="commercial">Commercial / Office</option>
+              <option value="residential">Residential</option>
+              <option value="landmark">Landmark</option>
+            </select>
+          </Field>
+
+          <Field label="Height (m)">
+            <input
+              type="number"
+              min="1"
+              max="300"
+              className={INPUT}
+              value={node.height ?? 10}
+              onChange={(e) => {
+                const newHeight = Math.max(1, Number(e.target.value) || 1);
+                patch({ height: newHeight });
+              }}
+            />
+          </Field>
+
+          <Field label={`Floors (${node.floors ?? 1})`}>
+            <input
+              type="range"
+              min="1"
+              max="50"
+              step="1"
+              className="w-[150px] accent-accent"
+              value={node.floors ?? 1}
+              onChange={(e) => {
+                const newFloors = Math.max(1, Number(e.target.value) || 1);
+                patch({ floors: newFloors });
+              }}
+            />
+          </Field>
+
+
+          <Field label="Window Style">
+            <select
+              className={INPUT}
+              value={node.windowStyle ?? (['commercial', 'civic', 'landmark'].includes(node.kind) ? 'vertical' : 'none')}
+              onChange={(e) => patch({ windowStyle: e.target.value })}
+            >
+              <option value="vertical">Vertical Columns (Concept3D)</option>
+              <option value="grid">Rectangular Window Grid</option>
+              <option value="curtain">Full Glass Curtain Wall</option>
+              <option value="none">None (Solid Facade)</option>
+            </select>
+          </Field>
+
+          {/* Architectural Toggles */}
+          <div className="flex flex-col gap-2 rounded-lg bg-surface-sunk p-2.5 mt-1 border border-edge">
+            <span className="text-[11px] font-semibold text-slate-300">Architecture & Features</span>
+
+            <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <span>Floor Band Ledges</span>
+              <input
+                type="checkbox"
+                className="accent-accent h-3.5 w-3.5 rounded"
+                checked={node.showLedges ?? ((node.floors || Math.round((node.height || 10) / 3.2)) > 1)}
+                onChange={(e) => patch({ showLedges: e.target.checked })}
+              />
+            </label>
+
+            <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <span>Main Entrance Canopy</span>
+              <input
+                type="checkbox"
+                className="accent-accent h-3.5 w-3.5 rounded"
+                checked={!!node.hasEntrance}
+                onChange={(e) => patch({ hasEntrance: e.target.checked })}
+              />
+            </label>
+
+            <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <span>Roof Parapet Border</span>
+              <input
+                type="checkbox"
+                className="accent-accent h-3.5 w-3.5 rounded"
+                checked={node.hasParapet ?? true}
+                onChange={(e) => patch({ hasParapet: e.target.checked })}
+              />
+            </label>
+
+            <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <span>Rooftop Penthouse / HVAC</span>
+              <input
+                type="checkbox"
+                className="accent-accent h-3.5 w-3.5 rounded"
+                checked={node.hasRoofPenthouse ?? (['commercial', 'civic'].includes(node.kind) && (node.height || 10) > 12)}
+                onChange={(e) => patch({ hasRoofPenthouse: e.target.checked })}
+              />
+            </label>
+
+            <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <span>Show 3D Text Label</span>
+              <input
+                type="checkbox"
+                className="accent-accent h-3.5 w-3.5 rounded"
+                checked={!!node.showLabel}
+                onChange={(e) => patch({ showLabel: e.target.checked })}
+              />
+            </label>
+
+            <div className="flex items-center justify-between text-xs text-slate-300 mt-1 pt-1 border-t border-edge/50">
+              <span>Wall Color</span>
+              <input
+                type="color"
+                className="h-6 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+                value={node.wallColor || '#d9d6cf'}
+                onChange={(e) => patch({ wallColor: e.target.value })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-300">
+              <span>Roof Color</span>
+              <input
+                type="color"
+                className="h-6 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+                value={node.roofColor || '#c2beb4'}
+                onChange={(e) => patch({ roofColor: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Footprint Corners Management */}
+          <div className="flex flex-col gap-2 rounded-lg bg-surface-sunk p-2.5 mt-1 border border-edge">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+              <span>Footprint Corners ({node.footprint?.slice(0, -1).length || 0})</span>
+              <button
+                title="Add corner at wall midpoint"
+                onClick={() => {
+                  if (!node.footprint || node.footprint.length < 3) return;
+                  const midIdx = Math.floor((node.footprint.length - 2) / 2);
+                  const [ax, az] = node.footprint[midIdx];
+                  const [bx, bz] = node.footprint[midIdx + 1];
+                  const newPt = [(ax + bx) / 2, (az + bz) / 2];
+                  const updated = [...node.footprint];
+                  updated.splice(midIdx + 1, 0, newPt);
+                  patch({ footprint: updated });
+                }}
+                className="rounded bg-surface-raised px-2 py-0.5 text-[10px] text-accent hover:bg-accent hover:text-white"
+              >
+                + Add Corner
+              </button>
+            </div>
+
+            <div className="flex max-h-36 flex-col gap-1 overflow-y-auto pr-1">
+              {node.footprint?.slice(0, -1).map(([x, z], idx) => (
+                <div key={idx} className="flex items-center justify-between gap-1 text-[11px]">
+                  <span className="font-mono text-slate-500 w-4">#{idx + 1}</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    className="w-16 rounded border border-edge bg-surface px-1 py-0.5 font-mono text-[10px] text-slate-200"
+                    value={Math.round(x * 10) / 10}
+                    onChange={(e) => {
+                      const newX = Number(e.target.value) || 0;
+                      const updated = node.footprint.map((pt, i) => (i === idx ? [newX, pt[1]] : pt));
+                      if (idx === 0) updated[updated.length - 1] = [newX, updated[updated.length - 1][1]];
+                      patch({ footprint: updated });
+                    }}
+                  />
+                  <span className="text-slate-600">,</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    className="w-16 rounded border border-edge bg-surface px-1 py-0.5 font-mono text-[10px] text-slate-200"
+                    value={Math.round(z * 10) / 10}
+                    onChange={(e) => {
+                      const newZ = Number(e.target.value) || 0;
+                      const updated = node.footprint.map((pt, i) => (i === idx ? [pt[0], newZ] : pt));
+                      if (idx === 0) updated[updated.length - 1] = [updated[updated.length - 1][0], newZ];
+                      patch({ footprint: updated });
+                    }}
+                  />
+                  {node.footprint.length > 4 && (
+                    <button
+                      onClick={() => {
+                        const updated = node.footprint.filter((_, i) => i !== idx);
+                        if (idx === 0) updated[updated.length - 1] = updated[0];
+                        patch({ footprint: updated });
+                      }}
+                      className="text-red-400 hover:text-red-300 text-[11px] px-1"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
+
 
       {node.type === 'tree' && (
         <Field label={`Scale ${(node.scale ?? 1).toFixed(1)}×`}>
@@ -109,18 +302,208 @@ export default function Inspector() {
       )}
 
       {node.type === 'path' && (
-        <Field label="Class">
-          <select
-            className={INPUT}
-            value={node.pathClass || 'walkway'}
-            onChange={(e) => patch({ pathClass: e.target.value })}
-          >
-            <option value="major">Major road</option>
-            <option value="street">Street</option>
-            <option value="walkway">Walkway</option>
-          </select>
-        </Field>
+        <>
+          <Field label="Class">
+            <select
+              className={INPUT}
+              value={node.pathClass || 'walkway'}
+              onChange={(e) => patch({ pathClass: e.target.value })}
+            >
+              <option value="major">Major road</option>
+              <option value="street">Street</option>
+              <option value="walkway">Walkway</option>
+            </select>
+          </Field>
+
+          <Field label="Elevation (m)">
+            <input
+              type="number"
+              min="0"
+              max="30"
+              step="0.5"
+              className={INPUT}
+              value={node.elevation ?? 0}
+              placeholder="0 (Ground)"
+              onChange={(e) => patch({ elevation: Math.max(0, Number(e.target.value) || 0) })}
+            />
+          </Field>
+
+          <Field label="Custom Width (m)">
+            <input
+              type="number"
+              min="1"
+              max="50"
+              step="0.5"
+              className={INPUT}
+              value={node.widthOverride ?? ''}
+              placeholder="Default"
+              onChange={(e) => {
+                const val = e.target.value === '' ? undefined : Number(e.target.value);
+                patch({ widthOverride: val });
+              }}
+            />
+          </Field>
+
+          {/* Style & Decor Toggles */}
+          <div className="flex flex-col gap-2 rounded-lg bg-surface-sunk p-2.5 mt-1 border border-edge">
+            <span className="text-[11px] font-semibold text-slate-300">Style & Features</span>
+            
+            <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <span>Smooth Corners</span>
+              <input
+                type="checkbox"
+                className="accent-accent h-3.5 w-3.5 rounded"
+                checked={!!node.smooth}
+                onChange={(e) => patch({ smooth: e.target.checked, smoothness: e.target.checked ? (node.smoothness || 3) : 0 })}
+              />
+            </label>
+
+            {node.smooth && (
+              <div className="flex items-center justify-between text-xs text-slate-400 pl-2">
+                <span>Smoothness ({node.smoothness || 3}×)</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  step="1"
+                  className="w-24 accent-accent"
+                  value={node.smoothness || 3}
+                  onChange={(e) => patch({ smoothness: Number(e.target.value) })}
+                />
+              </div>
+            )}
+
+
+            <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <span>Centerline Markings</span>
+              <input
+                type="checkbox"
+                className="accent-accent h-3.5 w-3.5 rounded"
+                checked={node.showCenterline ?? (node.pathClass === 'major')}
+                onChange={(e) => patch({ showCenterline: e.target.checked })}
+              />
+            </label>
+
+            <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <span>Street Lamps</span>
+              <input
+                type="checkbox"
+                className="accent-accent h-3.5 w-3.5 rounded"
+                checked={!!node.showLamps}
+                onChange={(e) => patch({ showLamps: e.target.checked })}
+              />
+            </label>
+
+            <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <span>Bridge Guardrails</span>
+              <input
+                type="checkbox"
+                className="accent-accent h-3.5 w-3.5 rounded"
+                checked={node.showRailings ?? ((node.elevation || 0) > 0)}
+                onChange={(e) => patch({ showRailings: e.target.checked })}
+              />
+            </label>
+
+            <div className="flex items-center justify-between text-xs text-slate-300 mt-1 pt-1 border-t border-edge/50">
+              <span>Fill Color</span>
+              <input
+                type="color"
+                className="h-6 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+                value={node.fillColor || '#f6f0e2'}
+                onChange={(e) => patch({ fillColor: e.target.value })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-300">
+              <span>Border Color</span>
+              <input
+                type="color"
+                className="h-6 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+                value={node.casingColor || '#26262b'}
+                onChange={(e) => patch({ casingColor: e.target.value })}
+              />
+            </div>
+          </div>
+
+
+          <div className="flex flex-col gap-2 rounded-lg bg-surface-sunk p-2.5 mt-1 border border-edge">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+              <span>Waypoints ({node.polyline?.length || 0})</span>
+              <div className="flex gap-1">
+                <button
+                  title="Subdivide path center"
+                  onClick={() => {
+                    if (!node.polyline || node.polyline.length < 2) return;
+                    const midIdx = Math.floor((node.polyline.length - 1) / 2);
+                    const [ax, az] = node.polyline[midIdx];
+                    const [bx, bz] = node.polyline[midIdx + 1];
+                    const newPt = [(ax + bx) / 2, (az + bz) / 2];
+                    const updated = [...node.polyline];
+                    updated.splice(midIdx + 1, 0, newPt);
+                    patch({ polyline: updated });
+                  }}
+                  className="rounded bg-surface-raised px-2 py-0.5 text-[10px] text-accent hover:bg-accent hover:text-white"
+                >
+                  + Add Point
+                </button>
+                <button
+                  title="Reverse direction"
+                  onClick={() => {
+                    if (!node.polyline) return;
+                    patch({ polyline: [...node.polyline].reverse() });
+                  }}
+                  className="rounded bg-surface-raised px-2 py-0.5 text-[10px] text-slate-400 hover:text-white"
+                >
+                  ⇄ Reverse
+                </button>
+              </div>
+            </div>
+
+            <div className="flex max-h-36 flex-col gap-1 overflow-y-auto pr-1">
+              {node.polyline?.map(([x, z], idx) => (
+                <div key={idx} className="flex items-center justify-between gap-1 text-[11px]">
+                  <span className="font-mono text-slate-500 w-4">#{idx + 1}</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    className="w-16 rounded border border-edge bg-surface px-1 py-0.5 font-mono text-[10px] text-slate-200"
+                    value={Math.round(x * 10) / 10}
+                    onChange={(e) => {
+                      const newX = Number(e.target.value) || 0;
+                      const updated = node.polyline.map((pt, i) => (i === idx ? [newX, pt[1]] : pt));
+                      patch({ polyline: updated });
+                    }}
+                  />
+                  <span className="text-slate-600">,</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    className="w-16 rounded border border-edge bg-surface px-1 py-0.5 font-mono text-[10px] text-slate-200"
+                    value={Math.round(z * 10) / 10}
+                    onChange={(e) => {
+                      const newZ = Number(e.target.value) || 0;
+                      const updated = node.polyline.map((pt, i) => (i === idx ? [pt[0], newZ] : pt));
+                      patch({ polyline: updated });
+                    }}
+                  />
+                  {node.polyline.length > 2 && (
+                    <button
+                      onClick={() => {
+                        const updated = node.polyline.filter((_, i) => i !== idx);
+                        patch({ polyline: updated });
+                      }}
+                      className="text-red-400 hover:text-red-300 text-[11px] px-1"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
+
 
       {node.type === 'surface' && (
         <Field label="Material">

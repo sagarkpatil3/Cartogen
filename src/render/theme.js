@@ -28,7 +28,14 @@ export const theme = {
     residential: { color: '#cf9f83', roof: '#a9573f' },
     landmark:    { color: '#e0d3bd', roof: '#cbb592' },
     selected:    '#f0913f',
+    glass:       '#38bdf8',
+    glassFrame:  '#334155',
+    entrance:    '#0284c7',
+    canopy:      '#1e293b',
+    parapet:     '#a1a1aa',
+    ledge:       '#71717a',
   },
+
 
   surface: {
     lawn:    { color: '#93c46f', y: 0.02 },
@@ -46,7 +53,16 @@ export const theme = {
     major:   { color: '#3f3f46', casing: '#26262b', border: 3.5, y: 0.20, width: 13 },
     street:  { color: '#55555c', casing: '#333338', border: 2.6, y: 0.19, width: 8 },
     walkway: { color: '#f6f0e2', casing: '#a98f5f', border: 2.2, y: 0.22, width: 4.2 },
+    selected: '#f0913f',
+    selectedGlow: '#00f0ff',
+    pillar: '#52525b',
+    handle: '#00f0ff',
+    centerline: '#facc15',
+    centerlineSecondary: '#ffffff',
+    guardrail: '#94a3b8',
+    guardrailPost: '#475569',
   },
+
 
   tree: {
     trunk: '#7d5a3c',
