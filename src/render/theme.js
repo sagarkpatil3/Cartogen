@@ -38,21 +38,21 @@ export const theme = {
 
 
   surface: {
-    lawn:    { color: '#93c46f', y: 0.02 },
-    grass:   { color: '#93c46f', y: 0.02 },
-    forest:  { color: '#5f8f4e', y: 0.02 },
-    water:   { color: '#7fb4dd', y: 0.02 },
-    sand:    { color: '#e4d6ad', y: 0.02 },
-    plaza:   { color: '#e6ddcb', y: 0.04 },
-    parking: { color: '#3a3a40', y: 0.03 },
-    pitch:   { color: '#6fae5a', y: 0.03 },
-    bare:    { color: '#c7b78f', y: 0.02 },
+    lawn:    { color: '#93c46f', y: 0.10 },
+    grass:   { color: '#93c46f', y: 0.10 },
+    forest:  { color: '#5f8f4e', y: 0.10 },
+    water:   { color: '#7fb4dd', y: 0.08 },
+    sand:    { color: '#e4d6ad', y: 0.10 },
+    plaza:   { color: '#e6ddcb', y: 0.18 },
+    parking: { color: '#3a3a40', y: 0.15 },
+    pitch:   { color: '#6fae5a', y: 0.15 },
+    bare:    { color: '#c7b78f', y: 0.10 },
   },
 
   path: {
-    major:   { color: '#3f3f46', casing: '#26262b', border: 3.5, y: 0.20, width: 13 },
-    street:  { color: '#55555c', casing: '#333338', border: 2.6, y: 0.19, width: 8 },
-    walkway: { color: '#f6f0e2', casing: '#a98f5f', border: 2.2, y: 0.22, width: 4.2 },
+    major:   { color: '#3f3f46', casing: '#26262b', border: 3.5, y: 0.40, width: 13 },
+    street:  { color: '#55555c', casing: '#333338', border: 2.6, y: 0.39, width: 8 },
+    walkway: { color: '#f6f0e2', casing: '#a98f5f', border: 2.2, y: 0.42, width: 4.2 },
     selected: '#f0913f',
     selectedGlow: '#00f0ff',
     pillar: '#52525b',

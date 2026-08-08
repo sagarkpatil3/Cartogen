@@ -7,6 +7,7 @@ const INPUT =
   'text-white outline-none focus:border-accent';
 
 const GIZMOS = /** @type {const} */ ([
+  ['none', 'Select'],
   ['translate', 'Move'],
   ['rotate', 'Rotate'],
   ['scale', 'Scale'],
@@ -28,6 +29,7 @@ export default function Inspector() {
   const updateNode = useSceneStore((s) => s.updateNode);
   const deleteNode = useSceneStore((s) => s.deleteNode);
   const addLog = useSceneStore((s) => s.addLog);
+  const select = useSceneStore((s) => s.select);
 
   const node = nodes.find((n) => n.id === selectedId);
 
@@ -60,7 +62,13 @@ export default function Inspector() {
         {GIZMOS.map(([mode, label]) => (
           <button
             key={mode}
-            onClick={() => setGizmoMode(mode)}
+            onClick={() => {
+              if (gizmoMode === mode) {
+                select(null);
+              } else {
+                setGizmoMode(mode);
+              }
+            }}
             className={`flex-1 rounded-md py-1 text-[11px] font-medium transition ${
               gizmoMode === mode
                 ? 'bg-accent text-white'
@@ -134,12 +142,41 @@ export default function Inspector() {
               value={node.windowStyle ?? (['commercial', 'civic', 'landmark'].includes(node.kind) ? 'vertical' : 'none')}
               onChange={(e) => patch({ windowStyle: e.target.value })}
             >
+              <option value="parametric">Parametric Splitter (CGA Grammar)</option>
               <option value="vertical">Vertical Columns (Concept3D)</option>
               <option value="grid">Rectangular Window Grid</option>
               <option value="curtain">Full Glass Curtain Wall</option>
               <option value="none">None (Solid Facade)</option>
             </select>
           </Field>
+
+          {(node.windowStyle === 'parametric' || node.glazingRatio !== undefined || node.bayWidth !== undefined) && (
+            <>
+              <Field label={`Glazing Ratio (${Math.round((node.glazingRatio ?? 0.65) * 100)}%)`}>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="0.95"
+                  step="0.05"
+                  className="w-[150px] accent-accent"
+                  value={node.glazingRatio ?? 0.65}
+                  onChange={(e) => patch({ glazingRatio: Number(e.target.value) })}
+                />
+              </Field>
+
+              <Field label="Target Bay Width (m)">
+                <input
+                  type="number"
+                  min="1.5"
+                  max="12"
+                  step="0.5"
+                  className={INPUT}
+                  value={node.bayWidth ?? 4}
+                  onChange={(e) => patch({ bayWidth: Math.max(1, Number(e.target.value) || 4) })}
+                />
+              </Field>
+            </>
+          )}
 
           {/* Architectural Toggles */}
           <div className="flex flex-col gap-2 rounded-lg bg-surface-sunk p-2.5 mt-1 border border-edge">

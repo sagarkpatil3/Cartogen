@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { Html } from '@react-three/drei';
 import { extrudeFootprint, generateFloorLedges, generateRoofParapet, getBuildingEntranceTransform, generateWindowColumns, generateRoofPenthouse, centroid } from '../lib/geometry.js';
+import { generateParametricFacadeGeometry } from './facade.js';
 import { buildingStyle, theme } from './theme.js';
 import * as THREE from 'three';
 
@@ -27,12 +28,15 @@ export default function Building({ node, selected, onSelect }) {
     return generateFloorLedges(node.footprint, height, floors, 0.25);
   }, [showLedges, node.footprint, height, floors]);
 
-  // 3) 3D Window Facade Columns / Slits (Concept3D style)
+  // 3) 3D Window Facade Columns / Slits (Concept3D style or Parametric CGA split)
   const windowStyle = node.windowStyle ?? (['commercial', 'civic', 'landmark'].includes(node.kind) ? 'vertical' : 'none');
   const windowsGeometry = useMemo(() => {
     if (!windowStyle || windowStyle === 'none' || !node.footprint) return null;
+    if (windowStyle === 'parametric' || node.glazingRatio !== undefined || node.bayWidth !== undefined) {
+      return generateParametricFacadeGeometry(node.footprint, height, floors, node.bayWidth ?? 4, node.glazingRatio ?? 0.65);
+    }
     return generateWindowColumns(node.footprint, height, floors, windowStyle);
-  }, [windowStyle, node.footprint, height, floors]);
+  }, [windowStyle, node.footprint, height, floors, node.bayWidth, node.glazingRatio]);
 
   // 4) Top roof parapet wall
   const hasParapet = node.hasParapet ?? (floors >= 2);

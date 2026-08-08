@@ -8,7 +8,13 @@ export default function Surface({ node }) {
  
   return (
     <mesh geometry={geometry} position={[0, style.y, 0]} receiveShadow>
-      <meshStandardMaterial polygonOffset color={style.color} roughness={1} />
+      <meshStandardMaterial
+        polygonOffset
+        polygonOffsetFactor={-1}
+        polygonOffsetUnits={-1}
+        color={style.color}
+        roughness={1}
+      />
     </mesh>
   );
 }
