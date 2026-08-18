@@ -1,6 +1,8 @@
 // @ts-check
 import { useState, useRef } from 'react';
 import { useSceneStore } from '../store/scene-store.js';
+import { exportSceneAsHtml } from '../export/export-html.js';
+import { exportMapAsHtml } from '../export/export-map-html.js';
 
 /**
  * HEADER TOOLBAR — Production Grade Top Command Bar.
@@ -27,8 +29,22 @@ export default function Header({ onOpenMap }) {
   const setShowGrid = useSceneStore((s) => s.setShowGrid);
   const themeMode = useSceneStore((s) => s.themeMode);
   const setThemeMode = useSceneStore((s) => s.setThemeMode);
+  const wayfindingActive = useSceneStore((s) => s.wayfindingActive);
+  const setWayfindingActive = useSceneStore((s) => s.setWayfindingActive);
 
   const displayLocationLabel = originName || origin.name || `${origin.lat.toFixed(4)}°, ${origin.lng.toFixed(4)}°`;
+
+  // ── EXPORT 3D MAP WEBPAGE (MAPLIBRE + OSM BASEMAP) ──────────────────
+  function handleExportMap() {
+    exportMapAsHtml(nodes, origin, { projectName, themeMode, showGrid });
+    addLog(`Exported 3D map webpage with OpenStreetMap basemap (${nodes.length} objects)`);
+  }
+
+  // ── EXPORT STANDALONE 3D SCENE HTML ────────────────────────────────
+  function handleExportHTML() {
+    exportSceneAsHtml(nodes, origin, { projectName, themeMode, showGrid });
+    addLog(`Exported standalone 3D scene HTML viewer (${nodes.length} objects)`);
+  }
 
   // ── EXPORT SCENE JSON ───────────────────────────────────────────────
   function handleExportJSON() {
@@ -180,6 +196,18 @@ export default function Header({ onOpenMap }) {
           <span className="text-[11px]">Grid</span>
         </button>
 
+        {/* Wayfinding Studio Toggle */}
+        <button
+          onClick={() => setWayfindingActive(!wayfindingActive)}
+          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${wayfindingActive ? 'border-sky-500 bg-sky-500/20 text-sky-300 shadow-sm' : 'border-white/10 bg-slate-900/60 text-slate-300 hover:border-white/20 hover:text-white'}`}
+          title="Open Campus Wayfinding & ADA Routing Studio"
+        >
+          <svg className="h-3.5 w-3.5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          <span className="text-[11px]">Wayfinding</span>
+        </button>
+
         <div className="h-4 w-[1px] bg-white/10" />
 
         {/* File Actions: Import & Export */}
@@ -203,14 +231,30 @@ export default function Header({ onOpenMap }) {
         </button>
 
         <button
-          onClick={handleExportJSON}
+          onClick={handleExportMap}
           className="flex items-center gap-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 px-3 py-1 text-xs font-semibold text-white transition shadow-sm shadow-sky-500/20"
-          title="Export Scene JSON"
+          title="Export 3D scene on interactive OpenStreetMap basemap"
         >
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
-          Export
+          Export 3D Map
+        </button>
+
+        <button
+          onClick={handleExportHTML}
+          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-900/60 px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:text-white"
+          title="Export standalone 3D scene HTML web page"
+        >
+          3D Scene
+        </button>
+
+        <button
+          onClick={handleExportJSON}
+          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-900/60 px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:border-white/20 hover:text-white"
+          title="Export raw Scene JSON data file"
+        >
+          JSON
         </button>
 
         {/* Clear Scene Button */}

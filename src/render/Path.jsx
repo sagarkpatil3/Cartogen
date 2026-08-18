@@ -15,12 +15,12 @@ export default function Path({ node, selected = false, onSelect }) {
   const width = node.widthOverride ?? style.width;
   const yBase = style.y + elevation;
 
-  // 1) Geometry points: apply Catmull-Rom curve smoothing if requested
-  const smoothnessLevel = node.smoothness ?? (node.smooth ? 3 : 0);
+  // 1) Geometry points: apply Chaikin corner smoothing for beautiful rounded turns
   const points = useMemo(() => {
     if (!node.polyline || node.polyline.length < 2) return [];
-    return smoothnessLevel > 0 ? smoothPolyline(node.polyline, smoothnessLevel) : node.polyline;
-  }, [node.polyline, smoothnessLevel]);
+    const level = node.smoothness ?? 2;
+    return level > 0 ? smoothPolyline(node.polyline, level) : node.polyline;
+  }, [node.polyline, node.smoothness]);
 
 
   const casing = useMemo(
@@ -110,47 +110,53 @@ export default function Path({ node, selected = false, onSelect }) {
       <mesh geometry={casing} position={[0, yBase, 0]} receiveShadow castShadow={elevation > 0}>
         <meshStandardMaterial
           polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
           color={casingColor}
           roughness={0.9}
         />
       </mesh>
 
       {/* Colored fill just above casing */}
-      <mesh geometry={fill} position={[0, yBase + 0.015, 0]} receiveShadow castShadow={elevation > 0}>
-        <meshStandardMaterial
-          color={fillColor}
-          roughness={0.9}
-          polygonOffset
-          polygonOffsetFactor={-2}
-          polygonOffsetUnits={-2}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* Dashed Centerline overlay */}
-      {centerlineGeo && (
-        <mesh geometry={centerlineGeo} position={[0, yBase + 0.025, 0]}>
+      {node.pathType === 'stairs' ? (
+        <StairsMesh points={points} width={width} stepCount={node.stepCount} handrail={node.handrail} yBase={yBase} selected={selected} />
+      ) : (
+        <mesh geometry={fill} position={[0, yBase + 0.015, 0]} receiveShadow castShadow={elevation > 0}>
           <meshStandardMaterial
-            color={node.pathClass === 'major' ? theme.path.centerline : theme.path.centerlineSecondary}
-            roughness={0.5}
             polygonOffset
-            polygonOffsetFactor={-4}
-            polygonOffsetUnits={-4}
+            polygonOffsetFactor={-3}
+            polygonOffsetUnits={-3}
+            color={fillColor}
+            roughness={0.8}
             side={THREE.DoubleSide}
           />
         </mesh>
       )}
 
-      {/* Overpass Guardrail Safety Railings */}
-      {leftRailGeo && (
-        <mesh geometry={leftRailGeo} position={[0, yBase + 0.6, 0]} castShadow receiveShadow>
-          <meshStandardMaterial color={theme.path.guardrail || '#94a3b8'} roughness={0.4} metalness={0.8} />
+      {/* Accessible Ramp ADA Accent Ribbon */}
+      {node.pathType === 'accessible_ramp' && (
+        <mesh geometry={fill} position={[0, yBase + 0.025, 0]}>
+          <meshStandardMaterial color="#0284c7" emissive="#0284c7" emissiveIntensity={0.2} roughness={0.4} side={THREE.DoubleSide} />
         </mesh>
       )}
-      {rightRailGeo && (
-        <mesh geometry={rightRailGeo} position={[0, yBase + 0.6, 0]} castShadow receiveShadow>
-          <meshStandardMaterial color={theme.path.guardrail || '#94a3b8'} roughness={0.4} metalness={0.8} />
+
+      {/* Dashed Centerline */}
+      {showCenterline && centerlineGeo && (
+        <mesh geometry={centerlineGeo} position={[0, yBase + 0.03, 0]}>
+          <meshBasicMaterial color={node.pathClass === 'walkway' ? '#ffffff' : theme.path.centerline || '#facc15'} side={THREE.DoubleSide} />
         </mesh>
+      )}
+
+      {/* Handrails for Stairs and Ramps */}
+      {(node.handrail || node.pathType === 'stairs' || node.pathType === 'accessible_ramp') && leftRailGeo && rightRailGeo && (
+        <group position={[0, yBase + 0.9, 0]}>
+          <mesh geometry={leftRailGeo}>
+            <meshStandardMaterial color={node.pathType === 'accessible_ramp' ? '#0284c7' : '#94a3b8'} roughness={0.3} metalness={0.8} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh geometry={rightRailGeo}>
+            <meshStandardMaterial color={node.pathType === 'accessible_ramp' ? '#0284c7' : '#94a3b8'} roughness={0.3} metalness={0.8} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
       )}
 
       {/* Support pillars for elevated overpasses/bridges */}
@@ -177,5 +183,134 @@ export default function Path({ node, selected = false, onSelect }) {
   );
 }
 
+/** Flat Architectural Staircase Component (Zero Elevation Gain, Editable Step Count) */
+function StairsMesh({ points, width, stepCount, handrail, yBase, selected }) {
+  const { treadsGeo, risersGeo, handrailsGeo } = useMemo(() => {
+    if (!points || points.length < 2) return { treadsGeo: null, risersGeo: null, handrailsGeo: null };
+    const numSteps = Math.max(3, stepCount || 8);
+    const treadPos = [];
+    const riserPos = [];
+    const railPos = [];
 
+    const hw = width / 2;
+    const railHeight = 0.85; // 85cm handrail height
 
+    for (let i = 0; i < points.length - 1; i++) {
+      const [ax, az] = points[i], [bx, bz] = points[i + 1];
+      const segLen = Math.hypot(bx - ax, bz - az);
+      if (segLen < 0.2) continue;
+
+      let dx = (bx - ax) / segLen, dz = (bz - az) / segLen;
+      const nx = -dz * hw, nz = dx * hw;
+
+      for (let s = 0; s < numSteps; s++) {
+        const t1 = s / numSteps;
+        const t2 = (s + 0.82) / numSteps; // 82% step tread surface
+        const t3 = (s + 1.0) / numSteps;  // 18% dark contrast riser line
+
+        const x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
+        const x2 = ax + (bx - ax) * t2, z2 = az + (bz - az) * t2;
+        const x3 = ax + (bx - ax) * t3, z3 = az + (bz - az) * t3;
+
+        // 1) Flat Step Tread Surface (Light Stone / Concrete)
+        treadPos.push(
+          x1 + nx, 0, z1 + nz,  x1 - nx, 0, z1 - nz,  x2 - nx, 0, z2 - nz,
+          x1 + nx, 0, z1 + nz,  x2 - nx, 0, z2 - nz,  x2 + nx, 0, z2 + nz
+        );
+
+        // 2) Dark Riser Contrast Line (Separates each step)
+        riserPos.push(
+          x2 + nx, 0, z2 + nz,  x2 - nx, 0, z2 - nz,  x3 - nx, 0, z3 - nz,
+          x2 + nx, 0, z2 + nz,  x3 - nx, 0, z3 - nz,  x3 + nx, 0, z3 + nz
+        );
+
+        // 3) Metallic Handrails (If enabled)
+        if (handrail) {
+          const ry = railHeight;
+          // Left rail
+          railPos.push(
+            x1 + nx, ry, z1 + nz,  x3 + nx, ry, z3 + nz,  x3 + nx, ry + 0.04, z3 + nz,
+            x1 + nx, ry, z1 + nz,  x3 + nx, ry + 0.04, z3 + nz,  x1 + nx, ry + 0.04, z1 + nz
+          );
+          // Right rail
+          railPos.push(
+            x1 - nx, ry, z1 - nz,  x3 - nx, ry + 0.04, z3 - nz,  x3 - nx, ry, z3 - nz,
+            x1 - nx, ry, z1 - nz,  x1 - nx, ry + 0.04, z1 - nz,  x3 - nx, ry + 0.04, z3 - nz
+          );
+
+          // Support stanchion post every 4 steps
+          if (s % 4 === 0) {
+            railPos.push(
+              x1 + nx - 0.02, 0, z1 + nz - 0.02,  x1 + nx + 0.02, 0, z1 + nz + 0.02,  x1 + nx + 0.02, ry, z1 + nz + 0.02,
+              x1 + nx - 0.02, 0, z1 + nz - 0.02,  x1 + nx + 0.02, ry, z1 + nz + 0.02,  x1 + nx - 0.02, ry, z1 + nz - 0.02
+            );
+            railPos.push(
+              x1 - nx - 0.02, 0, z1 - nz - 0.02,  x1 - nx + 0.02, ry, z1 - nz + 0.02,  x1 - nx + 0.02, 0, z1 - nz + 0.02,
+              x1 - nx - 0.02, 0, z1 - nz - 0.02,  x1 - nx - 0.02, ry, z1 - nz - 0.02,  x1 - nx + 0.02, ry, z1 - nz + 0.02
+            );
+          }
+        }
+      }
+    }
+
+    const gTreads = new THREE.BufferGeometry();
+    gTreads.setAttribute('position', new THREE.Float32BufferAttribute(treadPos, 3));
+    gTreads.computeVertexNormals();
+
+    const gRisers = new THREE.BufferGeometry();
+    gRisers.setAttribute('position', new THREE.Float32BufferAttribute(riserPos, 3));
+    gRisers.computeVertexNormals();
+
+    const gRails = handrail && railPos.length > 0 ? new THREE.BufferGeometry() : null;
+    if (gRails) {
+      gRails.setAttribute('position', new THREE.Float32BufferAttribute(railPos, 3));
+      gRails.computeVertexNormals();
+    }
+
+    return { treadsGeo: gTreads, risersGeo: gRisers, handrailsGeo: gRails };
+  }, [points, width, stepCount, handrail]);
+
+  if (!treadsGeo) return null;
+
+  return (
+    <group position={[0, yBase + 0.02, 0]}>
+      {/* Flat Light Step Treads */}
+      <mesh geometry={treadsGeo} receiveShadow>
+        <meshStandardMaterial
+          color={selected ? '#38bdf8' : '#f8fafc'}
+          roughness={0.4}
+          side={THREE.DoubleSide}
+          polygonOffset
+          polygonOffsetFactor={-3}
+          polygonOffsetUnits={-3}
+        />
+      </mesh>
+
+      {/* Dark Step Riser Contrast Lines */}
+      {risersGeo && (
+        <mesh geometry={risersGeo}>
+          <meshStandardMaterial
+            color="#334155"
+            roughness={0.8}
+            side={THREE.DoubleSide}
+            polygonOffset
+            polygonOffsetFactor={-4}
+            polygonOffsetUnits={-4}
+          />
+        </mesh>
+      )}
+
+      {/* Metallic Handrails */}
+      {handrailsGeo && (
+        <mesh geometry={handrailsGeo} castShadow receiveShadow>
+          <meshStandardMaterial
+            color={selected ? '#0ea5e9' : '#475569'}
+            metalness={0.8}
+            roughness={0.2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      )}
+    </group>
+  );
+}

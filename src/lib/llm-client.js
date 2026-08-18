@@ -6,8 +6,8 @@
  * returns parsed JSON data.
  */
 
-// Fallback active models in order of preference to avoid 429 quota limits
-const MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
+// Fallback active models in order of preference to avoid quota limits
+const MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 const TRANSIENT = new Set([429, 500, 502, 503, 504]);
 const MAX_ATTEMPTS = 3;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -125,6 +125,7 @@ export async function generateStructured({
             }
 
             const payload = await response.json();
+            console.log(`[LLM Client] Served by model: ${payload.modelVersion || model}`);
             const candidate = payload?.candidates?.[0];
 
             if (!candidate || candidate.finishReason === 'SAFETY') {
@@ -142,7 +143,16 @@ export async function generateStructured({
             try {
                 return { data: JSON.parse(text), usage: payload.usageMetadata ?? null };
             } catch (err) {
-                throw new LLMError('Model returned invalid JSON', { kind: 'parse', cause: err });
+                // Attempt soft JSON repair for malformed LLM quotes/arrays
+                try {
+                    const repairedText = text
+                        .replace(/,\s*([\]}])/g, '$1') // remove trailing commas
+                        .replace(/\"shape\",\s*\"size\"/g, '"shape":"box"') // repair broken key strings
+                        .replace(/(:\s*)\[([^\]]*)$/g, '$1[]'); // close unclosed arrays
+                    return { data: JSON.parse(repairedText), usage: payload.usageMetadata ?? null };
+                } catch (repairErr) {
+                    throw new LLMError('Model returned invalid JSON', { kind: 'parse', cause: err });
+                }
             }
         } // end while(attempt)
     } // end for(model)

@@ -3,6 +3,7 @@ import Header from './ui/Header.jsx';
 import Sidebar from './ui/Sidebar.jsx';
 import MapPicker from './ui/MapPicker.jsx';
 import Viewport from './render/Viewport.jsx';
+import WayfindingPanel from './ui/WayfindingPanel.jsx';
 import { useSceneStore } from './store/scene-store.js';
 import { fetchArea } from './osm/overpass.js';
 import { parseArea } from './osm/parse-osm.js';
@@ -49,6 +50,7 @@ export default function App() {
         <Sidebar onOpenMap={() => setMapOpen(true)} />
         <main className="flex-1 h-full relative">
           <Viewport />
+          <WayfindingPanel />
         </main>
       </div>
       <MapPicker open={mapOpen} onClose={() => setMapOpen(false)} onConfirm={handleConfirmLocation}/>

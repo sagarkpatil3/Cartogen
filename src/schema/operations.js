@@ -70,12 +70,30 @@ export const AddBuildingOp = z.object({
     parameters: z
         .object({
             name: z.string().default('New Building'),
-            kind: z.enum(['commercial', 'civic', 'residential', 'landmark']).default('commercial'),
+            kind: z.enum(['commercial', 'civic', 'residential', 'landmark', 'office', 'retail', 'industrial', 'generic']).default('commercial'),
             height: z.coerce.number().min(3).max(300).default(18),
+            floors: z.coerce.number().min(1).max(100).optional(),
             width: z.coerce.number().min(5).max(120).default(24),
             depth: z.coerce.number().min(5).max(120).default(18),
             wallColor: HexColor.optional(),
             roofColor: HexColor.optional(),
+        })
+        .default({}),
+});
+
+/** Add a path, road, staircase, or ADA ramp. */
+export const AddPathOp = z.object({
+    action: z.literal('add_path'),
+    location: Location.default({ at: 'selection' }),
+    parameters: z
+        .object({
+            name: z.string().default('New Path'),
+            pathClass: z.enum(['major', 'street', 'walkway']).default('walkway'),
+            pathType: z.enum(['standard', 'stairs', 'accessible_ramp']).default('standard'),
+            elevation: z.coerce.number().min(-10).max(100).default(0),
+            stepCount: z.coerce.number().min(0).max(100).default(0),
+            isAccessible: z.boolean().default(true),
+            handrail: z.boolean().default(false),
         })
         .default({}),
 });
@@ -147,6 +165,7 @@ export const AddPartsToSelectionOp = z.object({
 export const OperationSchema = z.discriminatedUnion('action', [
     ScatterTreesOp,
     AddBuildingOp,
+    AddPathOp,
     SetBuildingHeightOp,
     RecolorBuildingOp,
     SetSurfaceMaterialOp,

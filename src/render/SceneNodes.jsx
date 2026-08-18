@@ -4,8 +4,10 @@ import BuildingEditor from './BuildingEditor.jsx';
 import Path from './Path.jsx';
 import PathEditor from './PathEditor.jsx';
 import Surface from './Surface.jsx';
+import SurfaceEditor from './SurfaceEditor.jsx';
 import Tree from './Tree.jsx';
 import ComposedObject from './ComposedObject.jsx';
+import WayfindingRoute from './WayfindingRoute.jsx';
 
 export default function SceneNodes() {
   const nodes = useSceneStore((s) => s.nodes);
@@ -20,7 +22,9 @@ export default function SceneNodes() {
 
   return (
     <>
-      {surfaces.map((n) => <Surface key={n.id} node={n} />)}
+      {surfaces.map((n) => (
+        <Surface key={n.id} node={n} selected={n.id === selectedId} onSelect={select} />
+      ))}
       {paths.map((n) => (
         <Path key={n.id} node={n} selected={n.id === selectedId} onSelect={select} />
       ))}
@@ -38,8 +42,10 @@ export default function SceneNodes() {
           onSelect={select}
         />
       ))}
-      <PathEditor />
+      <WayfindingRoute />
       <BuildingEditor />
+      <PathEditor />
+      <SurfaceEditor />
     </>
   );
 }

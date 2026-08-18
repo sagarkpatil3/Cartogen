@@ -13,14 +13,96 @@ export function fillPolygon(ring) {
   g.rotateX(-Math.PI / 2);
   return g;
 }
-export function ribbon(points, width) {
-  const hw = width / 2, pos = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    const [ax, az] = points[i], [bx, bz] = points[i + 1];
-    let dx = bx - ax, dz = bz - az; const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
-    const nx = -dz * hw, nz = dx * hw;
-    pos.push(ax+nx,0,az+nz, ax-nx,0,az-nz, bx+nx,0,bz+nz, ax-nx,0,az-nz, bx-nx,0,bz-nz, bx+nx,0,bz+nz);
+/**
+ * CHAIKIN POLYLINE SMOOTHING — Subdivides sharp 90-degree or jagged vertices into smooth rounded curves.
+ * @param {Array<[number, number]>} points
+ * @param {number} [iterations=2]
+ * @returns {Array<[number, number]>}
+ */
+export function smoothPolyline(points, iterations = 2) {
+  if (!points || points.length <= 2) return points;
+
+  let current = points;
+  for (let iter = 0; iter < iterations; iter++) {
+    const next = [current[0]];
+    for (let i = 0; i < current.length - 1; i++) {
+      const p0 = current[i];
+      const p1 = current[i + 1];
+
+      const q = [0.75 * p0[0] + 0.25 * p1[0], 0.75 * p0[1] + 0.25 * p1[1]];
+      const r = [0.25 * p0[0] + 0.75 * p1[0], 0.25 * p0[1] + 0.75 * p1[1]];
+
+      next.push(q, r);
+    }
+    next.push(current[current.length - 1]);
+    current = next;
   }
+  return current;
+}
+
+/**
+ * MITERED RIBBON GENERATOR — Extrudes 3D polyline with mitered corner joints.
+ * @param {Array<[number, number]>} points
+ * @param {number} width
+ * @returns {THREE.BufferGeometry}
+ */
+export function ribbon(points, width) {
+  if (!points || points.length < 2) return new THREE.BufferGeometry();
+
+  const hw = width / 2;
+  const n = points.length;
+  const leftPts = [];
+  const rightPts = [];
+
+  for (let i = 0; i < n; i++) {
+    let nx = 0, nz = 0;
+
+    if (i === 0) {
+      const dx = points[1][0] - points[0][0];
+      const dz = points[1][1] - points[0][1];
+      const len = Math.hypot(dx, dz) || 1;
+      nx = -dz / len;
+      nz = dx / len;
+    } else if (i === n - 1) {
+      const dx = points[n - 1][0] - points[n - 2][0];
+      const dz = points[n - 1][1] - points[n - 2][1];
+      const len = Math.hypot(dx, dz) || 1;
+      nx = -dz / len;
+      nz = dx / len;
+    } else {
+      const dx1 = points[i][0] - points[i - 1][0];
+      const dz1 = points[i][1] - points[i - 1][1];
+      const len1 = Math.hypot(dx1, dz1) || 1;
+      const n1x = -dz1 / len1, n1z = dx1 / len1;
+
+      const dx2 = points[i + 1][0] - points[i][0];
+      const dz2 = points[i + 1][1] - points[i][1];
+      const len2 = Math.hypot(dx2, dz2) || 1;
+      const n2x = -dz2 / len2, n2z = dx2 / len2;
+
+      nx = (n1x + n2x) / 2;
+      nz = (n1z + n2z) / 2;
+      const miterLen = Math.hypot(nx, nz) || 1;
+      const scale = Math.min(1.5, 1 / miterLen);
+      nx = (nx / miterLen) * scale;
+      nz = (nz / miterLen) * scale;
+    }
+
+    leftPts.push([points[i][0] + nx * hw, points[i][1] + nz * hw]);
+    rightPts.push([points[i][0] - nx * hw, points[i][1] - nz * hw]);
+  }
+
+  const pos = [];
+  for (let i = 0; i < n - 1; i++) {
+    const l1 = leftPts[i], r1 = rightPts[i];
+    const l2 = leftPts[i + 1], r2 = rightPts[i + 1];
+
+    pos.push(
+      l1[0], 0, l1[1],   r1[0], 0, r1[1],   l2[0], 0, l2[1],
+      r1[0], 0, r1[1],   r2[0], 0, r2[1],   l2[0], 0, l2[1]
+    );
+  }
+
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.computeVertexNormals();
@@ -101,25 +183,7 @@ export function removeWaypoint(polyline, index) {
   return polyline.filter((_, i) => i !== index);
 }
 
-/**
- * CATMULL-ROM CURVE SMOOTHING — generates ultra-smooth, flowing curves through polyline waypoints.
- * @param {[number, number][]} points
- * @param {number} [smoothness=2]
- * @returns {[number, number][]}
- */
-export function smoothPolyline(points, smoothness = 2) {
-  if (!points || points.length <= 2) return points;
-  if (!smoothness || smoothness <= 0) return points;
 
-  const vec3Points = points.map(([x, z]) => new THREE.Vector3(x, 0, z));
-  const curve = new THREE.CatmullRomCurve3(vec3Points, false, 'centripetal', 0.5);
-
-  const samplesPerSegment = Math.max(8, Math.round(smoothness * 8));
-  const totalSamples = Math.max(16, (points.length - 1) * samplesPerSegment);
-  const sampledPoints = curve.getPoints(totalSamples);
-
-  return sampledPoints.map((p) => [p.x, p.z]);
-}
 
 
 /**

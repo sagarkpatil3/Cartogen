@@ -10,6 +10,13 @@ export const useSceneStore = create((set, get) => ({
   showWireframe: false,
   themeMode: 'day', // 'day' | 'sunset' | 'night'
 
+  // Wayfinding Suite State
+  wayfindingActive: false,
+  wayfindingProfile: 'accessible', // 'accessible' | 'standard'
+  wayfindingStartId: null,
+  wayfindingEndId: null,
+  wayfindingRoute: null,
+
   // /** @type {'translate'|'rotate'|'scale'|'none'} which transform gizmo is active */
   gizmoMode: 'none',
 
@@ -113,6 +120,14 @@ export const useSceneStore = create((set, get) => ({
       ].slice(-50),
     })),
  
+  // ── wayfinding actions ─────────────────────────────────────────────
+  setWayfindingActive: (wayfindingActive) => set({ wayfindingActive }),
+  setWayfindingProfile: (wayfindingProfile) => set({ wayfindingProfile }),
+  setWayfindingStartId: (wayfindingStartId) => set({ wayfindingStartId }),
+  setWayfindingEndId: (wayfindingEndId) => set({ wayfindingEndId }),
+  setWayfindingRoute: (wayfindingRoute) => set({ wayfindingRoute }),
+  clearWayfinding: () => set({ wayfindingStartId: null, wayfindingEndId: null, wayfindingRoute: null }),
+
   // ── convenience ────────────────────────────────────────────────────
   /** The currently selected node object, or null. */
   getSelected: () => {

@@ -9,9 +9,9 @@ import { useSceneStore } from '../store/scene-store.js';
 const ENVIRONMENT_PRESETS = {
   day: {
     background: '#0b0f19',
-    groundColor: '#9aa877',
+    groundColor: '#c7b78f',
     skyLight: '#ffffff',
-    groundLight: '#8a9470',
+    groundLight: '#b3a37b',
     ambientIntensity: 0.5,
     sunColor: '#fff4e2',
     sunIntensity: 1.35,
@@ -42,7 +42,7 @@ const ENVIRONMENT_PRESETS = {
 export default function Viewport() {
   const themeMode = useSceneStore((s) => s.themeMode) || 'day';
   const showGrid = useSceneStore((s) => s.showGrid);
-  
+
   const env = ENVIRONMENT_PRESETS[themeMode] || ENVIRONMENT_PRESETS.day;
 
   return (
@@ -53,6 +53,8 @@ export default function Viewport() {
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
         gl.toneMappingExposure = 1.0;
+        gl.shadowMap.enabled = true;
+        gl.shadowMap.type = THREE.PCFSoftShadowMap;
       }}
       onPointerMissed={() => {
         useSceneStore.getState().select(null);
@@ -65,25 +67,25 @@ export default function Viewport() {
         intensity={env.sunIntensity}
         color={env.sunColor}
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-left={-1200}
-        shadow-camera-right={1200}
-        shadow-camera-top={1200}
-        shadow-camera-bottom={-1200}
-        shadow-camera-far={3000}
+        shadow-mapSize-width={4096}
+        shadow-mapSize-height={4096}
+        shadow-camera-left={-4000}
+        shadow-camera-right={4000}
+        shadow-camera-top={4000}
+        shadow-camera-bottom={-4000}
+        shadow-camera-near={1}
+        shadow-camera-far={6000}
+        shadow-bias={-0.0001}
+        shadow-normalBias={0.03}
       />
       <mesh rotation-x={-Math.PI / 2} position={[0, -0.2, 0]} receiveShadow>
         <planeGeometry args={[30000, 30000]} />
         <meshStandardMaterial
-          polygonOffset
-          polygonOffsetFactor={1}
-          polygonOffsetUnits={1}
           color={env.groundColor}
-          roughness={1}
+          roughness={0.9}
         />
       </mesh>
-      
+
       {showGrid && (
         <gridHelper args={[4000, 160, '#38bdf8', '#334155']} position={[0, 0.05, 0]} />
       )}
@@ -91,7 +93,18 @@ export default function Viewport() {
       <SceneNodes />
       <Transformer />
 
-      <OrbitControls target={[0, 0, 0]} maxPolarAngle={Math.PI / 2.15} maxDistance={4000} makeDefault />
+      <OrbitControls
+        makeDefault
+        target={[0, 0, 0]}
+        maxPolarAngle={Math.PI / 2.15}
+        maxDistance={4000}
+        screenSpacePanning={true}
+        mouseButtons={{
+          LEFT: THREE.MOUSE.ROTATE,
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT: THREE.MOUSE.PAN
+        }}
+      />
     </Canvas>
   );
 }

@@ -1,8 +1,13 @@
 // src/lib/ai-interpreter.js
+// @ts-check
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { generateStructured } from './llm-client.js';
 import { validateOperations } from '../schema/validator.js';
+import { OperationListSchema } from '../schema/operations.js';
+import { readResponseToOperations } from './response-reader.js';
 import { addBuilding } from '../ops/add-building.js';
 import { scatterTrees } from '../ops/scatter-trees.js';
+import { executeAddPath } from '../ops/add-path.js';
 import { serializeSelectedNode } from './serialize-context.js';
 import { useSceneStore } from '../store/scene-store.js';
 
@@ -210,70 +215,12 @@ export async function interpretPrompt(promptText, nodes = [], targetCenter = [0,
 Target Placement Center: [${targetCenter[0]}, ${targetCenter[1]}]
 User Request: "${text}"`;
 
-    // Explicit, perfectly aligned JSON schema matching our Zod validators and generator functions.
+    // Derived JSON schema from Zod contract to prevent schema drift.
+    const derivedOperationsSchema = zodToJsonSchema(OperationListSchema, { $refStrategy: 'none' });
     const RESPONSE_SCHEMA = {
         type: 'object',
         properties: {
-            operations: {
-                type: 'array',
-                items: {
-                    type: 'object',
-                    properties: {
-                        action: { 
-                            type: 'string', 
-                            enum: ['add_building', 'scatter_trees', 'compose_object', 'add_parts_to_selection', 'clarify'] 
-                        },
-                        question: { type: 'string' },
-                        parameters: {
-                            type: 'object',
-                            properties: {
-                                // compose_object & add_parts_to_selection
-                                name: { type: 'string' },
-                                massing: { type: 'string' },
-                                parts: {
-                                    type: 'array',
-                                    items: {
-                                        type: 'object',
-                                        properties: {
-                                            shape: { type: 'string', enum: ['box', 'cylinder', 'sphere', 'wedge'] },
-                                            size: { 
-                                                type: 'array', 
-                                                items: { type: 'number' },
-                                                minItems: 3,
-                                                maxItems: 3
-                                            },
-                                            position: { 
-                                                type: 'array', 
-                                                items: { type: 'number' },
-                                                minItems: 3,
-                                                maxItems: 3
-                                            },
-                                            radius: { type: 'number' },
-                                            height: { type: 'number' },
-                                            rotationY: { type: 'number' },
-                                            color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
-                                            material: { type: 'string', enum: ['matte', 'glossy', 'metal', 'glass', 'water'] }
-                                        },
-                                        required: ['shape', 'position', 'color', 'material']
-                                    }
-                                },
-                                // add_building
-                                height: { type: 'number' },
-                                kind: { type: 'string', enum: ['office', 'residential', 'industrial', 'retail', 'civic', 'generic'] },
-                                width: { type: 'number' },
-                                depth: { type: 'number' },
-                                wallColor: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
-                                roofColor: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
-                                // scatter_trees
-                                count: { type: 'number' },
-                                radius: { type: 'number' },
-                                onlyOnGrass: { type: 'boolean' }
-                            }
-                        }
-                    },
-                    required: ['action']
-                }
-            }
+            operations: derivedOperationsSchema
         },
         required: ['operations']
     };
@@ -285,18 +232,26 @@ User Request: "${text}"`;
         schema: RESPONSE_SCHEMA,
     });
 
-    const rawOps = Array.isArray(data) ? data : (data?.operations || []);
+    // 1) Universal Response Reader: Extract operations from ANY response format (JSON, raw text, malformed syntax)
+    const parsedOps = readResponseToOperations(data, targetCenter);
 
-    // Validate operations against our Zod schema
-    const validation = validateOperations(rawOps);
-    if (!validation.valid && validation.operations.length === 0) {
-        throw new Error(validation.errors.join('; '));
+    // 2) Validate and repair operations against Zod schema
+    const validation = validateOperations(parsedOps.length > 0 ? parsedOps : data);
+    
+    // If validation produced valid operations, use them; otherwise fallback to parsedOps guarantee
+    const finalOps = validation.operations.length > 0 ? validation.operations : (parsedOps.length > 0 ? parsedOps : []);
+
+    if (finalOps.length === 0) {
+        return {
+            created: [],
+            message: 'Unable to build 3D object from prompt. Please try describing the shape or dimensions.',
+        };
     }
 
     const createdNodes = [];
     let summaryMessage = '';
 
-    for (const op of validation.operations) {
+    for (const op of finalOps) {
         if (op.action === 'add_building') {
             const bldgs = addBuilding({
                 name: op.parameters.name,
@@ -331,6 +286,33 @@ User Request: "${text}"`;
             };
             createdNodes.push(composedNode);
             summaryMessage += `Generated ${composedNode.name} (${composedNode.parts.length} parts). `;
+        } else if (op.action === 'add_path') {
+            const paths = executeAddPath(op.parameters, targetCenter);
+            createdNodes.push(...paths);
+            summaryMessage += `Added ${paths[0].name}. `;
+        } else if (op.action === 'set_building_height') {
+            if (selectedNode && selectedNode.type === 'building') {
+                updateNode(selectedNode.id, { height: op.parameters.height });
+                summaryMessage += `Set building height to ${op.parameters.height}m. `;
+            }
+        } else if (op.action === 'recolor_building') {
+            if (selectedNode && selectedNode.type === 'building') {
+                const patch = {};
+                if (op.parameters.wallColor) patch.wallColor = op.parameters.wallColor;
+                if (op.parameters.roofColor) patch.roofColor = op.parameters.roofColor;
+                updateNode(selectedNode.id, patch);
+                summaryMessage += `Updated building colors. `;
+            }
+        } else if (op.action === 'set_surface_material') {
+            if (selectedNode && selectedNode.type === 'surface') {
+                updateNode(selectedNode.id, { material: op.parameters.material });
+                summaryMessage += `Set surface material to ${op.parameters.material}. `;
+            }
+        } else if (op.action === 'delete') {
+            if (selectedNode) {
+                useSceneStore.getState().deleteNode(selectedNode.id);
+                summaryMessage += `Deleted ${selectedNode.name || 'selected item'}. `;
+            }
         } else if (op.action === 'add_parts_to_selection') {
             if (!selectedNode) {
                 return { created: [], message: 'No object is currently selected to add details to.' };

@@ -93,12 +93,17 @@ export function parseArea(elements, origin) {
     // 1) BUILDING
     if (tags.building) {
       const kind = buildingKind(tags);
+      const rawEle = parseFloat(tags.ele || tags['gnis:ele']);
+      const elevation = Number.isFinite(rawEle) ? Math.max(0, Math.round(rawEle - 454)) : 0;
+      const height = Math.round(buildingHeight(tags, kind));
+
       nodes.push({
         id: `building-${el.id}`, type: 'building', name: tags.name,
         kind,
+        elevation,
         footprintGeo: closeRing(geo),
         footprint: closeRing(local),
-        height: Math.round(buildingHeight(tags, kind)),
+        height,
       });
       continue;
     }
@@ -115,11 +120,35 @@ export function parseArea(elements, origin) {
       continue;
     }
 
-    // 3) PATH / ROAD
+    // 3) PATH / ROAD / STAIRS
     if (tags.highway) {
+      const isSteps = tags.highway === 'steps';
+      const isRamp = tags.ramp === 'yes' || tags.wheelchair === 'yes';
+      const pathTypeVal = isSteps ? 'stairs' : isRamp ? 'accessible_ramp' : 'standard';
+
+      // Calculate horizontal run length
+      let runMeters = 0;
+      for (let i = 0; i < local.length - 1; i++) {
+        runMeters += Math.hypot(local[i + 1][0] - local[i][0], local[i + 1][1] - local[i][1]);
+      }
+
+      let stepCountVal = parseInt(tags.step_count, 10);
+      if (!stepCountVal && isSteps) {
+        stepCountVal = runMeters <= 15 ? Math.max(4, Math.round(runMeters / 0.30)) : Math.max(8, Math.round(runMeters / 0.80));
+      } else if (!stepCountVal) {
+        stepCountVal = 0;
+      }
+
+      const isAccessibleVal = !isSteps && tags.wheelchair !== 'no';
+
       nodes.push({
         id: `path-${el.id}`, type: 'path', name: tags.name,
         pathClass: pathClass(tags.highway),
+        pathType: pathTypeVal,
+        isAccessible: isAccessibleVal,
+        stepCount: stepCountVal,
+        handrail: tags.handrail === 'yes' || isSteps,
+        incline: tags.incline || (isSteps ? 'steep' : 'flat'),
         polylineGeo: geo,
         polyline: local,
       });

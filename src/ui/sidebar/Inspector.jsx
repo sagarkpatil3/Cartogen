@@ -340,6 +340,59 @@ export default function Inspector() {
 
       {node.type === 'path' && (
         <>
+          <Field label="Path Type">
+            <select
+              className={INPUT}
+              value={node.pathType || 'standard'}
+              onChange={(e) => patch({ pathType: e.target.value })}
+            >
+              <option value="standard">Standard Path / Road</option>
+              <option value="stairs">Stairs / Steps</option>
+              <option value="accessible_ramp">Accessible Ramp</option>
+            </select>
+          </Field>
+
+          {node.pathType === 'stairs' && (
+            <div className="flex flex-col gap-2 rounded-lg bg-surface-sunk p-2.5 mt-1 border border-accent/40">
+              <span className="text-[11px] font-semibold text-accent flex items-center gap-1">
+                🪜 Staircase Settings
+              </span>
+
+              <Field label={`Step Count (${node.stepCount || 8})`}>
+                <input
+                  type="range"
+                  min="3"
+                  max="50"
+                  step="1"
+                  className="w-[150px] accent-accent"
+                  value={node.stepCount || 8}
+                  onChange={(e) => patch({ stepCount: Number(e.target.value) })}
+                />
+              </Field>
+
+              <Field label="Step Count (Exact)">
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  className={INPUT}
+                  value={node.stepCount || 8}
+                  onChange={(e) => patch({ stepCount: Math.max(1, Number(e.target.value) || 8) })}
+                />
+              </Field>
+
+              <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+                <span>Side Handrails</span>
+                <input
+                  type="checkbox"
+                  className="accent-accent h-3.5 w-3.5 rounded"
+                  checked={node.handrail ?? true}
+                  onChange={(e) => patch({ handrail: e.target.checked })}
+                />
+              </label>
+            </div>
+          )}
+
           <Field label="Class">
             <select
               className={INPUT}
@@ -543,19 +596,141 @@ export default function Inspector() {
 
 
       {node.type === 'surface' && (
-        <Field label="Material">
-          <select
-            className={INPUT}
-            value={node.material || 'grass'}
-            onChange={(e) => patch({ material: e.target.value })}
-          >
-            {SURFACE_MATERIALS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <>
+          <Field label="Material">
+            <select
+              className={INPUT}
+              value={node.material || 'plaza'}
+              onChange={(e) => patch({ material: e.target.value })}
+            >
+              <option value="plaza">Plaza / Concrete Slab Floor</option>
+              <option value="concrete">Polished Concrete</option>
+              <option value="wood">Timber Wood Deck</option>
+              <option value="asphalt">Asphalt Paving</option>
+              <option value="parking">Parking Lot</option>
+              <option value="grass">Grass Lawn</option>
+              <option value="water">Water Surface</option>
+              <option value="sand">Sand / Beach</option>
+              <option value="pitch">Sports Pitch</option>
+              <option value="forest">Forest Ground</option>
+            </select>
+          </Field>
+
+          <Field label={`Slab Height / Thickness (${node.height || 0}m)`}>
+            <input
+              type="range"
+              min="0"
+              max="15"
+              step="0.2"
+              className="w-[150px] accent-accent"
+              value={node.height || 0}
+              onChange={(e) => patch({ height: Number(e.target.value) })}
+            />
+          </Field>
+
+          <Field label="Slab Thickness (m)">
+            <input
+              type="number"
+              min="0"
+              max="30"
+              step="0.1"
+              className={INPUT}
+              value={node.height ?? 0}
+              placeholder="0 (Flat)"
+              onChange={(e) => patch({ height: Math.max(0, Number(e.target.value) || 0) })}
+            />
+          </Field>
+
+          <Field label="Elevation (m)">
+            <input
+              type="number"
+              min="0"
+              max="30"
+              step="0.5"
+              className={INPUT}
+              value={node.elevation ?? 0}
+              placeholder="0 (Ground)"
+              onChange={(e) => patch({ elevation: Math.max(0, Number(e.target.value) || 0) })}
+            />
+          </Field>
+
+          <Field label="Surface Color">
+            <input
+              type="color"
+              className="h-6 w-9 cursor-pointer rounded border-0 bg-transparent p-0"
+              value={node.color || '#cbd5e1'}
+              onChange={(e) => patch({ color: e.target.value })}
+            />
+          </Field>
+
+          {/* Slab Footprint Corners Management */}
+          <div className="flex flex-col gap-2 rounded-lg bg-surface-sunk p-2.5 mt-1 border border-edge">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+              <span>Slab Corners ({node.polygon?.slice(0, -1).length || 0})</span>
+              <button
+                title="Add corner at edge midpoint"
+                onClick={() => {
+                  if (!node.polygon || node.polygon.length < 3) return;
+                  const midIdx = Math.floor((node.polygon.length - 2) / 2);
+                  const [ax, az] = node.polygon[midIdx];
+                  const [bx, bz] = node.polygon[midIdx + 1];
+                  const newPt = [(ax + bx) / 2, (az + bz) / 2];
+                  const updated = [...node.polygon];
+                  updated.splice(midIdx + 1, 0, newPt);
+                  patch({ polygon: updated });
+                }}
+                className="rounded bg-surface-raised px-2 py-0.5 text-[10px] text-accent hover:bg-accent hover:text-white"
+              >
+                + Add Corner
+              </button>
+            </div>
+
+            <div className="flex max-h-36 flex-col gap-1 overflow-y-auto pr-1">
+              {node.polygon?.slice(0, -1).map(([x, z], idx) => (
+                <div key={idx} className="flex items-center justify-between gap-1 text-[11px]">
+                  <span className="font-mono text-slate-500 w-4">#{idx + 1}</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    className="w-16 rounded border border-edge bg-surface px-1 py-0.5 font-mono text-[10px] text-slate-200"
+                    value={Math.round(x * 10) / 10}
+                    onChange={(e) => {
+                      const newX = Number(e.target.value) || 0;
+                      const updated = node.polygon.map((pt, i) => (i === idx ? [newX, pt[1]] : pt));
+                      if (idx === 0) updated[updated.length - 1] = [newX, updated[updated.length - 1][1]];
+                      patch({ polygon: updated });
+                    }}
+                  />
+                  <span className="text-slate-600">,</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    className="w-16 rounded border border-edge bg-surface px-1 py-0.5 font-mono text-[10px] text-slate-200"
+                    value={Math.round(z * 10) / 10}
+                    onChange={(e) => {
+                      const newZ = Number(e.target.value) || 0;
+                      const updated = node.polygon.map((pt, i) => (i === idx ? [pt[0], newZ] : pt));
+                      if (idx === 0) updated[updated.length - 1] = [updated[updated.length - 1][0], newZ];
+                      patch({ polygon: updated });
+                    }}
+                  />
+                  {node.polygon.length > 4 && (
+                    <button
+                      onClick={() => {
+                        const updated = node.polygon.filter((_, i) => i !== idx);
+                        if (idx === 0) updated[updated.length - 1] = updated[0];
+                        patch({ polygon: updated });
+                      }}
+                      className="text-red-400 hover:text-red-300 text-[11px] px-1"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       <button
